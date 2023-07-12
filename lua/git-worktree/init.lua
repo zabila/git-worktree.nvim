@@ -16,7 +16,9 @@ M.setup_git_info = function()
     local is_in_worktree = false
 
     local inside_worktree_job = Job:new({
-        'git', 'rev-parse', '--is-inside-work-tree',
+        'git',
+        'rev-parse',
+        '--is-inside-work-tree',
         cwd = cwd,
     })
 
@@ -27,7 +29,9 @@ M.setup_git_info = function()
     end
 
     local find_git_dir_job = Job:new({
-        'git', 'rev-parse', '--absolute-git-dir',
+        'git',
+        'rev-parse',
+        '--absolute-git-dir',
         cwd = cwd,
     })
 
@@ -50,7 +54,7 @@ M.setup_git_info = function()
                     git_worktree_root = cwd
                 else
                     local start = stdout:find("%.git")
-                    git_worktree_root = stdout:sub(1,start - 2)
+                    git_worktree_root = stdout:sub(1, start - 2)
                 end
             else
                 local start = stdout:find("/worktrees/")
@@ -67,12 +71,16 @@ M.setup_git_info = function()
     end
 
     local find_toplevel_job = Job:new({
-        'git', 'rev-parse', '--show-toplevel',
+        'git',
+        'rev-parse',
+        '--show-toplevel',
         cwd = cwd,
     })
 
     local find_toplevel_bare_job = Job:new({
-        'git', 'rev-parse', '--is-bare-repository',
+        'git',
+        'rev-parse',
+        '--is-bare-repository',
         cwd = cwd,
     })
 
@@ -121,7 +129,6 @@ M.setup_git_info = function()
             return
         end
     end
-
 end
 
 local function on_tree_change_handler(op, metadata)
@@ -129,7 +136,8 @@ local function on_tree_change_handler(op, metadata)
         if op == Enum.Operations.Switch then
             local changed = M.update_current_buffer(metadata["prev_path"])
             if not changed then
-                status:log().debug("Could not change to the file in the new worktree, running the `update_on_change_command`")
+                status:log().debug(
+                    "Could not change to the file in the new worktree, running the `update_on_change_command`")
                 vim.cmd(M._config.update_on_change_command)
             end
         end
@@ -157,7 +165,7 @@ local function change_dirs(path)
         vim.cmd(cmd)
         current_worktree_path = worktree_path
     else
-        status:error('Could not chang to directory: ' ..worktree_path)
+        status:error('Could not chang to directory: ' .. worktree_path)
     end
 
     if M._config.clearjumps_on_change then
@@ -169,9 +177,8 @@ local function change_dirs(path)
 end
 
 local function create_worktree_job(path, branch, found_branch)
-
     local worktree_add_cmd = 'git'
-    local worktree_add_args = {'worktree', 'add'}
+    local worktree_add_args = { 'worktree', 'add' }
 
     if not found_branch then
         table.insert(worktree_add_args, '-b')
@@ -199,8 +206,10 @@ local function has_worktree(path, cb)
     local plenary_path = Path:new(path)
 
     local job = Job:new({
-        'git', 'worktree', 'list', on_stdout = function(_, data)
-
+        'git',
+        'worktree',
+        'list',
+        on_stdout = function(_, data)
             local list_data = {}
             for section in data:gmatch("%S+") do
                 table.insert(list_data, section)
@@ -256,7 +265,9 @@ end
 local function has_origin()
     local found = false
     local job = Job:new({
-        'git', 'remote', 'show',
+        'git',
+        'remote',
+        'show',
         on_stdout = function(_, data)
             data = vim.trim(data)
             found = found or data == 'origin'
@@ -275,9 +286,11 @@ end
 local function has_branch(branch, cb)
     local found = false
     local job = Job:new({
-        'git', 'branch', on_stdout = function(_, data)
+        'git',
+        'branch',
+        on_stdout = function(_, data)
             -- remove  markere on current branch
-            data = data:gsub("*","")
+            data = data:gsub("*", "")
             data = vim.trim(data)
             found = found or data == branch
         end,
@@ -302,17 +315,19 @@ local function create_worktree(path, branch, upstream, found_branch)
         worktree_path = Path:new(git_worktree_root, path):absolute()
     end
 
-    local fetch = Job:new({
-        'git', 'fetch', '--all',
+    local fetch           = Job:new({
+        'git',
+        'fetch',
+        '--all',
         cwd = worktree_path,
         on_start = function()
             status:next_status("git fetch --all (This may take a moment)")
         end
     })
 
-    local set_branch_cmd = 'git'
-    local set_branch_args= {'branch', string.format('--set-upstream-to=%s/%s', upstream, branch)}
-    local set_branch = Job:new({
+    local set_branch_cmd  = 'git'
+    local set_branch_args = { 'branch', string.format('--set-upstream-to=%s/%s', upstream, branch) }
+    local set_branch      = Job:new({
         command = set_branch_cmd,
         args = set_branch_args,
         cwd = worktree_path,
@@ -323,9 +338,9 @@ local function create_worktree(path, branch, upstream, found_branch)
 
     -- TODO: How to configure origin???  Should upstream ever be the push
     -- destination?
-    local set_push_cmd = 'git'
-    local set_push_args = {'push', "--set-upstream", upstream,  branch, path}
-    local set_push  = Job:new({
+    local set_push_cmd    = 'git'
+    local set_push_args   = { 'push', "--set-upstream", upstream, branch, path }
+    local set_push        = Job:new({
         command = set_push_cmd,
         args = set_push_args,
         cwd = worktree_path,
@@ -334,8 +349,9 @@ local function create_worktree(path, branch, upstream, found_branch)
         end
     })
 
-    local rebase = Job:new({
-        'git', 'rebase',
+    local rebase          = Job:new({
+        'git',
+        'rebase',
         cwd = worktree_path,
         on_start = function()
             status:next_status("git rebase")
@@ -362,20 +378,19 @@ local function create_worktree(path, branch, upstream, found_branch)
         set_branch:after_failure(failure("create_worktree", set_branch.args, worktree_path, true))
 
         rebase:after(function()
-
             if rebase.code ~= 0 then
                 status:status("Rebase failed, but that's ok.")
             end
 
             vim.schedule(function()
-                emit_on_change(Enum.Operations.Create, {path = path, branch = branch, upstream = upstream})
+                emit_on_change(Enum.Operations.Create, { path = path, branch = branch, upstream = upstream })
                 M.switch_worktree(path)
             end)
         end)
     else
         create:after(function()
             vim.schedule(function()
-                emit_on_change(Enum.Operations.Create, {path = path, branch = branch, upstream = upstream})
+                emit_on_change(Enum.Operations.Create, { path = path, branch = branch, upstream = upstream })
                 M.switch_worktree(path)
             end)
         end)
@@ -404,14 +419,12 @@ M.create_worktree = function(path, branch, upstream)
             create_worktree(path, branch, upstream, found_branch)
         end)
     end)
-
 end
 
 M.switch_worktree = function(path)
     status:reset(2)
     M.setup_git_info()
     has_worktree(path, function(found)
-
         if not found then
             status:error("worktree does not exists, please create it first " .. path)
         end
@@ -420,7 +433,6 @@ M.switch_worktree = function(path)
             local prev_path = change_dirs(path)
             emit_on_change(Enum.Operations.Switch, { path = path, prev_path = prev_path })
         end)
-
     end)
 end
 
@@ -485,7 +497,7 @@ M.update_current_buffer = function(prev_path)
     end
 
     local name = Path:new(current_buf_name):absolute()
-    local start, fin = string.find(name, cwd..Path.path.sep, 1, true)
+    local start, fin = string.find(name, cwd .. Path.path.sep, 1, true)
     if start ~= nil then
         return true
     end
@@ -497,7 +509,7 @@ M.update_current_buffer = function(prev_path)
 
     local local_name = name:sub(fin + 2)
 
-    local final_path = Path:new({cwd, local_name}):absolute()
+    local final_path = Path:new({ cwd, local_name }):absolute()
 
     if not Path:new(final_path):exists() then
         return false
@@ -511,6 +523,7 @@ end
 M.on_tree_change = function(cb)
     table.insert(on_change_callbacks, cb)
 end
+
 
 M.reset = function()
     on_change_callbacks = {}
