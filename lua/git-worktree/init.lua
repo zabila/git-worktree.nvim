@@ -218,7 +218,7 @@ local function has_worktree(path, cb)
             data = list_data[1]
 
             local start
-            if plenary_path:is_absolute() then
+            if plenary_path:is_absolute() or M.is_windiws() then
                 start = data == path
             else
                 local worktree_path = Path:new(
@@ -309,7 +309,7 @@ local function create_worktree(path, branch, upstream, found_branch)
     local create = create_worktree_job(path, branch, found_branch)
 
     local worktree_path
-    if Path:new(path):is_absolute() then
+    if Path:new(path):is_absolute() or M.is_windiws() then
         worktree_path = path
     else
         worktree_path = Path:new(git_worktree_root, path):absolute()
@@ -538,11 +538,12 @@ M.get_current_worktree_path = function()
 end
 
 --NOTE: Tempotary workaround for windows
+M.is_windiws = function()
+    return vim.loop.os_uname().sysname == "Windows_NT"
+end
+
 M.get_worktree_path = function(path)
-    if vim.loop.os_uname().sysname == "Windows_NT" then
-        return path
-    end
-    if Path:new(path):is_absolute() then
+    if Path:new(path):is_absolute() or M.is_windiws() then
         return path
     else
         return Path:new(git_worktree_root, path):absolute()
