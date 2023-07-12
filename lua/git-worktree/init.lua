@@ -537,7 +537,11 @@ M.get_current_worktree_path = function()
     return current_worktree_path
 end
 
+--NOTE: Tempotary workaround for windows
 M.get_worktree_path = function(path)
+    if vim.loop.os_uname().sysname == "Windows_NT" then
+        return path
+    end
     if Path:new(path):is_absolute() then
         return path
     else
